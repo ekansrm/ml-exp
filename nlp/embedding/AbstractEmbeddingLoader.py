@@ -1,4 +1,0 @@
-
-
-class AbstractEmbeddingLookUp(object):
-    pass
