@@ -86,31 +86,35 @@ class SimpleEmbeddingLookup(object):
         embedding_fp.seek(0, 0)
         bar_format = "{percentage:3.0f}% | {n_fmt}/{total_fmt} | [{elapsed}<{remaining}]"
         with tqdm(total=embedding_file_size, bar_format=bar_format) as p_bar:
+            last_pos = 0
             while True:
                 c = embedding_fp.read(1)
+                is_line_break = False
 
                 # 如果不是最后一个字符
-                if c is not "":
+                if c not in ['', '\n', '\r', '\r\n']:
                     line_byte_cnt += 1
+                else:
+                    p_bar.update(embedding_fp.tell() - last_pos)
+                    last_pos = embedding_fp.tell()
+                    is_line_break = True
 
                 # word为当前行的第一个空格前的字符串
-                if word_completed is False:
+                if not is_line_break and not word_completed:
                     if c == " ":
                         word_completed = True
                     else:
                         word = word + c
 
-                # 如果已经是最后一个字符, 或者遇到回车符, 当前行结束. 写入词和当前行的偏移量和长度
-                if c == '\n' or c is "":
-                    if line_byte_cnt is not 0:
-                        embedding_index[word] = (embedding_fp.tell() - line_byte_cnt - 1, line_byte_cnt)
-                    p_bar.update(line_byte_cnt)
+                # 如果已经是最后一个字符, 或者遇到换行符, 当前行结束. 写入词和当前行的偏移量和长度
+                if is_line_break and line_byte_cnt is not 0:
+                    embedding_index[word] = (embedding_fp.tell() - line_byte_cnt - len(c), line_byte_cnt)
                     line_byte_cnt = 0
                     word_completed = False
                     word = ''
 
                 # 如果读到最后一个字符, embedding 读取和索引结束
-                if c is "":
+                if c is '':
                     break
 
         return embedding_index
@@ -141,7 +145,8 @@ if __name__ == '__main__':
     logging.basicConfig(
         level=logging.DEBUG
     )
-    embedding = SimpleEmbeddingLookup('embedding.txt')
-    print(embedding['of'])
+    embedding = SimpleEmbeddingLookup('D:\Work\Project\Project.DataScience\model\glove\glove.840B.300d.txt')
     print(embedding['the'])
-    print(embedding['.'])
+    print(embedding['is'])
+    print(embedding['a'])
+    print(embedding['king'])
