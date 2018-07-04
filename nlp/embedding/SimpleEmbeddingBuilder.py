@@ -6,41 +6,55 @@ Simple Word Embedding Builder
 - 抽取的词向量进行缓存, 检查词向量是否有更新, 有则重新加载
 
 """
-import pickle
+import os
+from typing import Union, Optional, Any, Dict, Tuple
 
-from .AbstractEmbeddingBuilder import AbstractEmbeddingBuilder
+from nlp.embedding.SimpleEmbeddingLookup import SimpleEmbeddingLookup
+from nlp.embedding.Utils import save_var, load_var
 
 
-class SimpleEmbeddingBuilder(AbstractEmbeddingBuilder):
+class SimpleEmbeddingBuilder(object):
 
-    def __init__(self):
+    def __init__(self, embedding: str):
+        self._embedding = SimpleEmbeddingLookup(embedding)
         pass
 
-    @staticmethod
-    def _save_var(var, path):
-        """
-        保存变量至文件
-        :param var: 变量
-        :param path: 保存路径
-        :return:
-        """
-        with open(file=path, mode="wb") as fp:
-            pickle.dump(var, file=fp)
+    def build(self, vocab: list, cache: str = None) -> Tuple[Union[Optional[list], Any], Union[Optional[Dict[Any, int]], Any]]:
 
-    @staticmethod
-    def _load_var(path):
-        """
-        从文件读取变量值
-        :param path: 保存路径
-        :return:
-        """
-        with open(file=path, mode="rb") as fp:
-            return pickle.load(fp)
+        def _build_token(m_vocab):
+            m_token = {}
+            for i, word in enumerate(m_vocab):
+                m_token[word] = i
+            return m_token
+
+        embedding = None
+        token = None
+        renew = False
+
+        if cache is not None:
+            if os.path.exists(cache):
+                [embedding, token] = load_var(cache)
+                renew = len(set(vocab) - set(token.keys())) > 0
+
+        if renew or cache is None:
+            embedding = list([self._embedding[word] for word in vocab])
+            token = _build_token(vocab)
+
+        if cache is not None:
+            save_var([embedding, token], cache)
+
+        def tokenizer(word) -> int:
+            return token[word]
+
+        return embedding, tokenizer
 
 
+if __name__ == '__main__':
+    vocab = ['of', 'the', 'he', 'she']
 
-    def build(self, vocab: list, cache: str = None) -> list:
-        pass
+    embedding_builder = SimpleEmbeddingBuilder('embedding.txt')
 
-    def get_tokenizer(self) -> function:
-        pass
+    embedding, tokenizer = embedding_builder.build(vocab)
+
+    print(embedding_builder)
+    print(list([tokenizer(word) for word in vocab]))
