@@ -66,9 +66,9 @@ if __name__ == '__main__':
     logging.basicConfig(
         level=logging.DEBUG
     )
-    vocab = ['of', 'the', 'a', 'is']
+    vocab = ['我', '是', '国家']
 
-    embedding_builder = SimpleEmbeddingBuilder('D:\Work\Project\Project.DataScience\model\glove\glove.840B.300d.txt')
+    embedding_builder = SimpleEmbeddingBuilder('E:\BaiduNetdiskDownload\sgns.sogou.word\sgns.sogou.word')
 
     embedding, tokenizer = embedding_builder.build(vocab, cache='my_embedding')
 

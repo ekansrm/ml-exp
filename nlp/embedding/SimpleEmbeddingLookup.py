@@ -91,9 +91,6 @@ class SimpleEmbeddingLookup(object):
                 c = embedding_fp.read(1)
                 is_line_break = False
 
-                if last_pos > 49993:
-                    print(c)
-
                 # 如果不是最后一个字符
                 if c not in [b'', b'\n', b'\r', b'\r\n', None]:
                     line_byte_cnt += 1
@@ -127,8 +124,9 @@ class SimpleEmbeddingLookup(object):
         pos = self.embedding_index[word]
         embedding_fp.seek(pos[0])
         line = embedding_fp.read(pos[1])
+        # TODO 自动判断编码格式
         line = line.decode('utf-8')
-        items = line.split(" ")
+        items = line.strip().split(" ")
         word_in_line = items[0]
         if word_in_line != word:
             raise Exception('index for word "%s" is not correct, abort' % word)
