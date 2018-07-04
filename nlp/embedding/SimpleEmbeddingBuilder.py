@@ -7,19 +7,22 @@ Simple Word Embedding Builder
 
 """
 import os
-from typing import Union, Optional, Any, Dict, Tuple
+import logging
+from typing import Tuple, List, Callable
 
 from nlp.embedding.SimpleEmbeddingLookup import SimpleEmbeddingLookup
 from nlp.embedding.Utils import save_var, load_var
 
+logger = logging.getLogger("SimpleEmbeddingBuilder")
+
 
 class SimpleEmbeddingBuilder(object):
 
-    def __init__(self, embedding: str):
-        self._embedding = SimpleEmbeddingLookup(embedding)
+    def __init__(self, embedding_path: str):
+        self._embedding = SimpleEmbeddingLookup(embedding_path)
         pass
 
-    def build(self, vocab: list, cache: str = None) -> Tuple[Union[Optional[list], Any], Union[Optional[Dict[Any, int]], Any]]:
+    def build(self, vocabulary: List[str], cache: str = None) -> Tuple[List[List[float]], Callable[[str], int]]:
 
         def _build_token(m_vocab):
             m_token = {}
@@ -27,34 +30,46 @@ class SimpleEmbeddingBuilder(object):
                 m_token[word] = i
             return m_token
 
-        embedding = None
+        _embedding = None
         token = None
-        renew = False
+        rebuild = True
 
         if cache is not None:
+            logger.info("load embedding cache")
             if os.path.exists(cache):
-                [embedding, token] = load_var(cache)
-                renew = len(set(vocab) - set(token.keys())) > 0
+                logger.info("embedding cache found")
+                (_embedding, token) = load_var(cache)
+                rebuild = len(set(vocabulary) - set(token.keys())) > 0
+                if rebuild:
+                    logger.info("there is new word in vocabulary, need to rebuild embedding")
+            else:
+                logger.warning("embedding cache not found")
 
-        if renew or cache is None:
-            embedding = list([self._embedding[word] for word in vocab])
-            token = _build_token(vocab)
+        if rebuild:
+            logger.info("building embedding...")
+            _embedding = list([self._embedding[word] for word in vocabulary])
+            token = _build_token(vocabulary)
+            logger.warning("build embedding completed")
 
         if cache is not None:
-            save_var([embedding, token], cache)
+            save_var((_embedding, token), cache)
 
-        def tokenizer(word) -> int:
+        def _tokenizer(word: str) -> int:
             return token[word]
 
-        return embedding, tokenizer
+        return _embedding, _tokenizer
 
 
 if __name__ == '__main__':
-    vocab = ['of', 'the', 'he', 'she']
+
+    logging.basicConfig(
+        level=logging.DEBUG
+    )
+    vocab = ['of', 'the', 'a', 'is']
 
     embedding_builder = SimpleEmbeddingBuilder('embedding.txt')
 
-    embedding, tokenizer = embedding_builder.build(vocab)
+    embedding, tokenizer = embedding_builder.build(vocab, cache='my_embedding')
 
-    print(embedding_builder)
+    print(embedding)
     print(list([tokenizer(word) for word in vocab]))

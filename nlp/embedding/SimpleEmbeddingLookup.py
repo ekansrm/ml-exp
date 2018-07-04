@@ -3,7 +3,7 @@ import logging
 from tqdm import tqdm
 
 from nlp.embedding import Utils
-from nlp.embedding import AbstractEmbeddingLookup
+from typing import List, Dict, Tuple, TextIO
 
 
 class Lazy(object):
@@ -45,21 +45,22 @@ class SimpleEmbeddingLookup(object):
             logger.info('close embedding file...')
 
     @Lazy
-    def embedding_fp(self):
+    def embedding_fp(self) -> TextIO:
         logger.info('open embedding file...')
         if not self._embedding_fp:
             self._embedding_fp = open(self._embedding_path, 'r', encoding='utf-8')
         return self._embedding_fp
 
     @Lazy
-    def embedding_index(self):
+    def embedding_index(self) -> Dict[str, Tuple[int, int]]:
         logger.info("initialize embedding index")
         if not self._embedding_index:
             embedding_index_path = self._embedding_path + ".index"
             if not os.path.exists(embedding_index_path):
                 logger.info("embedding index does not exist")
                 logger.info("indexing embedding...")
-                self._build_embedding_index()
+                index = self._build_embedding_index()
+                self._embedding_index = index
                 logger.info("index embedding completed.")
                 Utils.save_var(self._embedding_index, embedding_index_path)
             else:
@@ -71,7 +72,7 @@ class SimpleEmbeddingLookup(object):
 
         return self._embedding_index
 
-    def _build_embedding_index(self):
+    def _build_embedding_index(self) -> Dict[str, Tuple[int, int]]:
 
         embedding_fp = self.embedding_fp
 
@@ -112,10 +113,9 @@ class SimpleEmbeddingLookup(object):
                 if c is "":
                     break
 
-        self._embedding_index = embedding_index
-        return self._embedding_index
+        return embedding_index
 
-    def _get_vector(self, word):
+    def _get_vector(self, word: str) -> List[float]:
         embedding_fp = self.embedding_fp
         pos = self.embedding_index[word]
         embedding_fp.seek(pos[0])
@@ -126,7 +126,7 @@ class SimpleEmbeddingLookup(object):
             raise Exception('index for word "%s" is not correct, abort' % word)
         return list(map(float, items[1:]))
 
-    def __getitem__(self, word):
+    def __getitem__(self, word) -> List[float]:
         if word not in self._embedding_cache:
             vec = self._get_vector(word)
             self._embedding_cache[word] = vec
