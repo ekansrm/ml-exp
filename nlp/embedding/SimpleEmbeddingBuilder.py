@@ -37,19 +37,20 @@ class SimpleEmbeddingBuilder(object):
         if cache is not None:
             logger.info("load embedding cache")
             if os.path.exists(cache):
+                # TODO 需要检查embedding文件
                 logger.info("embedding cache found")
                 (_embedding, token) = load_var(cache)
                 rebuild = len(set(vocabulary) - set(token.keys())) > 0
                 if rebuild:
-                    logger.info("there is new word in vocabulary, need to rebuild embedding")
+                    logger.info("there is new word in vocabulary, need to rebuild custom embedding")
             else:
-                logger.warning("embedding cache not found")
+                logger.warning("custom embedding cache not found")
 
         if rebuild:
-            logger.info("building embedding...")
+            logger.info("building custom embedding...")
             _embedding = list([self._embedding[word] for word in vocabulary])
             token = _build_token(vocabulary)
-            logger.warning("build embedding completed")
+            logger.warning("build custom embedding completed")
 
         if cache is not None:
             save_var((_embedding, token), cache)
@@ -67,7 +68,7 @@ if __name__ == '__main__':
     )
     vocab = ['of', 'the', 'a', 'is']
 
-    embedding_builder = SimpleEmbeddingBuilder('embedding.txt')
+    embedding_builder = SimpleEmbeddingBuilder('D:\Work\Project\Project.DataScience\model\glove\glove.840B.300d.txt')
 
     embedding, tokenizer = embedding_builder.build(vocab, cache='my_embedding')
 
