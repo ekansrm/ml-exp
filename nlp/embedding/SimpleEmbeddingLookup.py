@@ -3,7 +3,7 @@ import logging
 from tqdm import tqdm
 
 from nlp.embedding import Utils
-from typing import List, Dict, Tuple, TextIO
+from typing import List, Dict, Tuple, TextIO, BinaryIO
 
 
 class Lazy(object):
@@ -45,10 +45,10 @@ class SimpleEmbeddingLookup(object):
             logger.info('close embedding file...')
 
     @Lazy
-    def embedding_fp(self) -> TextIO:
+    def embedding_fp(self) -> BinaryIO:
         logger.info('open embedding file...')
         if not self._embedding_fp:
-            self._embedding_fp = open(self._embedding_path, 'r', encoding='utf-8')
+            self._embedding_fp = open(self._embedding_path, 'rb')
         return self._embedding_fp
 
     @Lazy
@@ -78,7 +78,7 @@ class SimpleEmbeddingLookup(object):
 
         embedding_index = {}
         line_byte_cnt = 0
-        word = ''
+        word = b''
         word_completed = False
         embedding_fp.seek(0, 2)
         embedding_file_size = embedding_fp.tell()
@@ -91,8 +91,11 @@ class SimpleEmbeddingLookup(object):
                 c = embedding_fp.read(1)
                 is_line_break = False
 
+                if last_pos > 49993:
+                    print(c)
+
                 # 如果不是最后一个字符
-                if c not in ['', '\n', '\r', '\r\n']:
+                if c not in [b'', b'\n', b'\r', b'\r\n', None]:
                     line_byte_cnt += 1
                 else:
                     p_bar.update(embedding_fp.tell() - last_pos)
@@ -101,20 +104,20 @@ class SimpleEmbeddingLookup(object):
 
                 # word为当前行的第一个空格前的字符串
                 if not is_line_break and not word_completed:
-                    if c == " ":
+                    if c == b' ':
                         word_completed = True
                     else:
                         word = word + c
 
                 # 如果已经是最后一个字符, 或者遇到换行符, 当前行结束. 写入词和当前行的偏移量和长度
                 if is_line_break and line_byte_cnt is not 0:
-                    embedding_index[word] = (embedding_fp.tell() - line_byte_cnt - len(c), line_byte_cnt)
+                    embedding_index[word.decode('utf-8')] = (embedding_fp.tell() - line_byte_cnt - len(c), line_byte_cnt)
                     line_byte_cnt = 0
                     word_completed = False
-                    word = ''
+                    word = b''
 
                 # 如果读到最后一个字符, embedding 读取和索引结束
-                if c is '':
+                if c == b'' or c is None:
                     break
 
         return embedding_index
@@ -124,6 +127,7 @@ class SimpleEmbeddingLookup(object):
         pos = self.embedding_index[word]
         embedding_fp.seek(pos[0])
         line = embedding_fp.read(pos[1])
+        line = line.decode('utf-8')
         items = line.split(" ")
         word_in_line = items[0]
         if word_in_line != word:
@@ -145,8 +149,7 @@ if __name__ == '__main__':
     logging.basicConfig(
         level=logging.DEBUG
     )
-    embedding = SimpleEmbeddingLookup('D:\Work\Project\Project.DataScience\model\glove\glove.840B.300d.txt')
+    embedding = SimpleEmbeddingLookup('embedding.txt')
     print(embedding['the'])
     print(embedding['is'])
     print(embedding['a'])
-    print(embedding['king'])
