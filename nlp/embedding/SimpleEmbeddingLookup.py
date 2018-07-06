@@ -1,5 +1,6 @@
 import os
 import logging
+import chardet
 from tqdm import tqdm
 
 from nlp.embedding import Utils
@@ -28,10 +29,11 @@ class SimpleEmbeddingLookup(object):
     Embedding 文件
     """
 
-    def __init__(self, embedding_path: str):
+    def __init__(self, embedding_path: str, embedding_encoding: str = 'utf-8'):
         self._embedding_path = os.path.abspath(embedding_path)
 
         self._embedding_fp = None
+        self._embedding_encoding = embedding_encoding
         self._embedding_index = None
         self._embedding_cache = {}
 
@@ -75,6 +77,7 @@ class SimpleEmbeddingLookup(object):
     def _build_embedding_index(self) -> Dict[str, Tuple[int, int]]:
 
         embedding_fp = self.embedding_fp
+        embedding_encoding = self._embedding_encoding
 
         embedding_index = {}
         line_byte_cnt = 0
@@ -108,7 +111,8 @@ class SimpleEmbeddingLookup(object):
 
                 # 如果已经是最后一个字符, 或者遇到换行符, 当前行结束. 写入词和当前行的偏移量和长度
                 if is_line_break and line_byte_cnt is not 0:
-                    embedding_index[word.decode('utf-8')] = (embedding_fp.tell() - line_byte_cnt - len(c), line_byte_cnt)
+                    embedding_index[word.decode(embedding_encoding)] = \
+                        (embedding_fp.tell() - line_byte_cnt - len(c), line_byte_cnt)
                     line_byte_cnt = 0
                     word_completed = False
                     word = b''
@@ -124,8 +128,7 @@ class SimpleEmbeddingLookup(object):
         pos = self.embedding_index[word]
         embedding_fp.seek(pos[0])
         line = embedding_fp.read(pos[1])
-        # TODO 自动判断编码格式
-        line = line.decode('utf-8')
+        line = line.decode(self._embedding_encoding)
         items = line.strip().split(" ")
         word_in_line = items[0]
         if word_in_line != word:

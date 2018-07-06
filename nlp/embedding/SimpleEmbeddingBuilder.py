@@ -18,9 +18,9 @@ logger = logging.getLogger("SimpleEmbeddingBuilder")
 
 class SimpleEmbeddingBuilder(object):
 
-    def __init__(self, embedding_path: str):
-        self._embedding = SimpleEmbeddingLookup(embedding_path)
-        pass
+    def __init__(self, embedding_path: str, embedding_encoding: str = 'utf-8'):
+        self._embedding = SimpleEmbeddingLookup(embedding_path, embedding_encoding)
+        self._embedding_name = os.path.basename(embedding_path)
 
     def build(self, vocabulary: List[str], cache: str = None) -> Tuple[List[List[float]], Callable[[str], int]]:
 
@@ -30,35 +30,38 @@ class SimpleEmbeddingBuilder(object):
                 m_token[word] = i
             return m_token
 
-        _embedding = None
+        base_embedding_name = self._embedding_name
+        custom_embedding = None
         token = None
         rebuild = True
 
         if cache is not None:
             logger.info("load embedding cache")
             if os.path.exists(cache):
-                # TODO 需要检查embedding文件
                 logger.info("embedding cache found")
-                (_embedding, token) = load_var(cache)
+                (cached_basic_embedding_name, custom_embedding, token) = load_var(cache)
                 rebuild = len(set(vocabulary) - set(token.keys())) > 0
                 if rebuild:
                     logger.info("there is new word in vocabulary, need to rebuild custom embedding")
+                if cached_basic_embedding_name != base_embedding_name:
+                    rebuild = True
+                    logger.info("base embedding file has changed, need to rebuild custom embedding")
             else:
                 logger.warning("custom embedding cache not found")
 
         if rebuild:
             logger.info("building custom embedding...")
-            _embedding = list([self._embedding[word] for word in vocabulary])
+            custom_embedding = list([self._embedding[word] for word in vocabulary])
             token = _build_token(vocabulary)
             logger.warning("build custom embedding completed")
 
         if cache is not None:
-            save_var((_embedding, token), cache)
+            save_var((base_embedding_name, custom_embedding, token), cache)
 
         def _tokenizer(word: str) -> int:
             return token[word]
 
-        return _embedding, _tokenizer
+        return custom_embedding, _tokenizer
 
 
 if __name__ == '__main__':
@@ -72,5 +75,8 @@ if __name__ == '__main__':
 
     embedding, tokenizer = embedding_builder.build(vocab, cache='my_embedding')
 
-    print(embedding)
+    vocab2 = ['你', '是', '国家']
+    embedding2, tokenizer2 = embedding_builder.build(vocab2, cache='my_embedding')
+
     print(list([tokenizer(word) for word in vocab]))
+    print(list([tokenizer2(word) for word in vocab2]))
