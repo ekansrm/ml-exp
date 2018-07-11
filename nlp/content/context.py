@@ -160,7 +160,7 @@ if __name__ == '__main__':
     DEMO
     """
 
-    x = Input(shape=(128,), dtype='float32', name='x')
+    x = Input(shape=(24,), dtype='float32', name='x')
     context_id = Input(shape=(1,), dtype='int32', name='context_id')
 
     l_context = Content(
@@ -186,13 +186,21 @@ if __name__ == '__main__':
         metrics=['accuracy']
     )
 
+    from nlp.embedding.Utils import save_var, load_var
 
+    op_idx_a, op_1_a, op_2_a = load_var("test_data")
 
-    # model.fit(
-    #     x={'x_int': x_int, 'x_float': x_float},
-    #     y={'y': y, 'y_aux': y},
-    #     class_weight=class_weight,
-    #     epochs=50, batch_size=64, shuffle=True, validation_split=0.2,
-    #     callbacks=[early_stopping, checkpoint],
-    #     verbose=1,
-    # )
+    import numpy as np
+
+    op_idx_a = np.array(op_idx_a)
+    op_1_a = np.array(op_1_a)
+    op_2_a = np.array(op_2_a)
+
+    var = np.concatenate((op_1_a, op_2_a), axis=1)
+
+    model.fit(
+        x={'context_id': op_idx_a, 'x': var},
+        y={'y': y},
+        epochs=50, batch_size=64, shuffle=True, validation_split=0.2,
+        verbose=1,
+    )

@@ -1,6 +1,6 @@
 import numpy as np
 import time
-from nlp.embedding.Utils import save_var
+from nlp.embedding.Utils import save_var, load_var
 
 
 class OpDataGenerator(object):
@@ -59,12 +59,22 @@ class OpDataGenerator(object):
             op_idx_a.append(op_idx)
             op_1_a.append(op1)
             op_2_a.append(op2)
+        op_idx_a = np.array(op_idx_a)
+        op_1_a = np.array(op_1_a)
+        op_2_a = np.array(op_2_a)
+
         return op_idx_a, op_1_a, op_2_a
 
 
 if __name__=='__main__':
     gen = OpDataGenerator(delta=0.01, category=9, DIM=12)
-    print(gen.gen(100))
+    save_var(gen.gen(100), "test_data")
+
+    op_idx_a, op_1_a, op_2_a = load_var("test_data")
+
+    print(op_idx_a)
+    print(op_1_a)
+    print(op_2_a)
 
 
 
