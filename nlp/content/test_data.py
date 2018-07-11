@@ -48,33 +48,32 @@ class OpDataGenerator(object):
         core = self.cate_list[category_idx] + delta_rand
         op_idx = np.random.randint(low=0, high=self.OP_CA, size=None)
         op1, op2 = self.op_table[op_idx](core)
-        return op_idx, op1, op2
+        return op_idx, op1, op2, category_idx
 
     def gen(self, num):
         op_idx_a = []
         op_1_a = []
         op_2_a = []
+        category_a = []
         for i in range(num):
-            op_idx, op1, op2 = self._gen_one_sample()
+            op_idx, op1, op2, category = self._gen_one_sample()
             op_idx_a.append(op_idx)
             op_1_a.append(op1)
             op_2_a.append(op2)
+            category_a.append(category)
         op_idx_a = np.array(op_idx_a)
         op_1_a = np.array(op_1_a)
         op_2_a = np.array(op_2_a)
+        category_a = np.array(category_a)
 
-        return op_idx_a, op_1_a, op_2_a
+        return op_idx_a, op_1_a, op_2_a, category_a
 
 
 if __name__=='__main__':
     gen = OpDataGenerator(delta=0.01, category=9, DIM=12)
-    save_var(gen.gen(100), "test_data")
+    save_var(gen.gen(100000), "test_data")
 
-    op_idx_a, op_1_a, op_2_a = load_var("test_data")
-
-    print(op_idx_a)
-    print(op_1_a)
-    print(op_2_a)
+    op_idx_a, op_1_a, op_2_a, category_a = load_var("test_data")
 
 
 

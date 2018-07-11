@@ -172,35 +172,62 @@ if __name__ == '__main__':
 
     o_context = l_context([context_id, x])
 
-    y = Dense(units=1, activation='softmax', name='y')(o_context)
+    y = Dense(units=9, activation='softmax', name='y')(o_context)
 
     model = Model(inputs=[context_id, x], outputs=[y])
 
     model.summary()
 
 
-    model.compile(
-        optimizer='adam',
-        loss={'y': 'binary_crossentropy'},
-        loss_weights={'y': 1.},
-        metrics=['accuracy']
-    )
+
 
     from nlp.embedding.Utils import save_var, load_var
 
-    op_idx_a, op_1_a, op_2_a = load_var("test_data")
+    op_idx_a, op_1_a, op_2_a, cate = load_var("test_data")
 
     import numpy as np
+
+    import pandas as pd
 
     op_idx_a = np.array(op_idx_a)
     op_1_a = np.array(op_1_a)
     op_2_a = np.array(op_2_a)
+    cate = np.array(cate)
+    cate_df = pd.DataFrame({'y': cate})
+    cate_onehot = pd.get_dummies(cate_df, columns=['y'])
+
 
     var = np.concatenate((op_1_a, op_2_a), axis=1)
 
+    model.compile(
+        optimizer='adam',
+        loss={'y': 'categorical_crossentropy'},
+        loss_weights={'y': 1.},
+        metrics=['accuracy']
+    )
     model.fit(
         x={'context_id': op_idx_a, 'x': var},
-        y={'y': y},
+        y={'y': cate_onehot},
+        epochs=50, batch_size=64, shuffle=True, validation_split=0.2,
+        verbose=1,
+    )
+
+
+    x1 = Input(shape=(24,), dtype='float32', name='x')
+    d1 = Dense(units=100, activation='sigmoid')(x1)
+    y2 = Dense(units=9, activation='softmax', name='y')(d1)
+    model_mirror = Model(inputs=[x1], outputs=[y2])
+
+    model_mirror.summary()
+    model_mirror.compile(
+        optimizer='adam',
+        loss={'y': 'categorical_crossentropy'},
+        metrics=['accuracy']
+    )
+
+    model_mirror.fit(
+        x={'x': var},
+        y={'y': cate_onehot.values},
         epochs=50, batch_size=64, shuffle=True, validation_split=0.2,
         verbose=1,
     )
