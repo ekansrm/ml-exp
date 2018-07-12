@@ -6,8 +6,11 @@ from keras import constraints
 from keras.engine import Layer
 from keras.legacy import interfaces
 from keras.layers import Input
+from keras.engine import InputSpec
 from keras.layers import Dense
 from keras.models import Model
+from keras.layers import Embedding
+from keras.layers import Lambda
 
 
 class Content(Layer):
@@ -87,6 +90,7 @@ class Content(Layer):
         self.input_length = input_length
 
         self.embeddings = None
+        self.input_dim = None
         self.bias = None
 
         self.built = False
@@ -95,13 +99,24 @@ class Content(Layer):
         assert input_shape and len(input_shape) == 2 and len(input_shape[1]) >= 2
         assert input_shape[1][-1]
         input_dim = input_shape[1][-1]
-        self.embeddings = self.add_weight(
-            shape=(self.contexts, input_dim, self.units),
-            initializer=self.embeddings_initializer,
-            name='kernel',
-            regularizer=self.embeddings_regularizer,
-            constraint=self.embeddings_constraint,
-            dtype=self.dtype)
+        self.input_dim = input_dim
+        self.embeddings = []
+        for i in range(self.units):
+            w = self.add_weight(
+                shape=(self.contexts, input_dim),
+                initializer=self.embeddings_initializer,
+                name='kernel',
+                regularizer=self.embeddings_regularizer,
+                constraint=self.embeddings_constraint,
+                dtype=self.dtype)
+            self.embeddings.append(w)
+        # self.embeddings = self.add_weight(
+        #     shape=(self.contexts, input_dim, self.units),
+        #     initializer=self.embeddings_initializer,
+        #     name='kernel',
+        #     regularizer=self.embeddings_regularizer,
+        #     constraint=self.embeddings_constraint,
+        #     dtype=self.dtype)
 
         if self.use_bias:
             self.bias = self.add_weight(shape=(self.units,),
@@ -111,6 +126,7 @@ class Content(Layer):
                                         constraint=self.bias_constraint)
         else:
             self.bias = None
+        # self.input_spec = [InputSpec(min_ndim=1, axes={-1: 1}), InputSpec(min_ndim=2, axes={-1: input_dim})]
         self.built = True
 
     def compute_output_shape(self, input_shape):
@@ -133,9 +149,26 @@ class Content(Layer):
             content_idx = K.cast(content_idx, 'int32')
 
         # 从embeddings取出对应的权重
-        w = K.gather(self.embeddings, content_idx)
-
-        output = K.dot(inputs, w)
+        # w = K.gather(self.embeddings, content_idx)
+        # w = K.reshape(w, shape=(-1, self.input_dim, self.units))
+        #
+        # output = K.dot(inputs, w)
+        # output = K.reshape(output, shape=(-1, self.units))
+        #
+        # if self.use_bias:
+        #     output = K.bias_add(output, self.bias)
+        #
+        # if self.activation is not None:
+        #     output = self.activation(output)
+        o = []
+        for i in range(self.units):
+            w = K.gather(self.embeddings[i], content_idx)
+            # w = K.reshape(w, shape=(-1, self.input_dim))
+            _o = K.dot(w, inputs)
+            # _o = K.reshape(_o, shape=(-1, 1))
+            o.append(_o)
+        output = K.concatenate(o, axis=1)
+        # output = K.reshape(output, shape=(self.units,))
 
         if self.use_bias:
             output = K.bias_add(output, self.bias)
@@ -165,7 +198,7 @@ if __name__ == '__main__':
 
     l_context = Content(
         units=10
-        , contexts=10
+        , contexts=4
         , activation='sigmoid'
         , embeddings_initializer='lecun_uniform'
     )
@@ -177,9 +210,6 @@ if __name__ == '__main__':
     model = Model(inputs=[context_id, x], outputs=[y])
 
     model.summary()
-
-
-
 
     from nlp.embedding.Utils import save_var, load_var
 
@@ -196,22 +226,19 @@ if __name__ == '__main__':
     cate_df = pd.DataFrame({'y': cate})
     cate_onehot = pd.get_dummies(cate_df, columns=['y'])
 
-
     var = np.concatenate((op_1_a, op_2_a), axis=1)
 
     model.compile(
         optimizer='adam',
         loss={'y': 'categorical_crossentropy'},
-        loss_weights={'y': 1.},
         metrics=['accuracy']
     )
     model.fit(
         x={'context_id': op_idx_a, 'x': var},
-        y={'y': cate_onehot},
+        y={'y': cate_onehot.values},
         epochs=50, batch_size=64, shuffle=True, validation_split=0.2,
         verbose=1,
     )
-
 
     x1 = Input(shape=(24,), dtype='float32', name='x')
     d1 = Dense(units=100, activation='sigmoid')(x1)
