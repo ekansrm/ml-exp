@@ -100,23 +100,23 @@ class Content(Layer):
         assert input_shape[1][-1]
         input_dim = input_shape[1][-1]
         self.input_dim = input_dim
-        self.embeddings = []
-        for i in range(self.units):
-            w = self.add_weight(
-                shape=(self.contexts, input_dim),
-                initializer=self.embeddings_initializer,
-                name='kernel',
-                regularizer=self.embeddings_regularizer,
-                constraint=self.embeddings_constraint,
-                dtype=self.dtype)
-            self.embeddings.append(w)
-        # self.embeddings = self.add_weight(
-        #     shape=(self.contexts, input_dim, self.units),
-        #     initializer=self.embeddings_initializer,
-        #     name='kernel',
-        #     regularizer=self.embeddings_regularizer,
-        #     constraint=self.embeddings_constraint,
-        #     dtype=self.dtype)
+        # self.embeddings = []
+        # for i in range(self.units):
+        #     w = self.add_weight(
+        #         shape=(self.contexts, input_dim),
+        #         initializer=self.embeddings_initializer,
+        #         name='kernel',
+        #         regularizer=self.embeddings_regularizer,
+        #         constraint=self.embeddings_constraint,
+        #         dtype=self.dtype)
+        #     self.embeddings.append(w)
+        self.embeddings = self.add_weight(
+            shape=(self.contexts, input_dim, self.units),
+            initializer=self.embeddings_initializer,
+            name='kernel',
+            regularizer=self.embeddings_regularizer,
+            constraint=self.embeddings_constraint,
+            dtype=self.dtype)
 
         if self.use_bias:
             self.bias = self.add_weight(shape=(self.units,),
@@ -149,25 +149,21 @@ class Content(Layer):
             content_idx = K.cast(content_idx, 'int32')
 
         # 从embeddings取出对应的权重
-        # w = K.gather(self.embeddings, content_idx)
-        # w = K.reshape(w, shape=(-1, self.input_dim, self.units))
-        #
-        # output = K.dot(inputs, w)
-        # output = K.reshape(output, shape=(-1, self.units))
-        #
-        # if self.use_bias:
-        #     output = K.bias_add(output, self.bias)
-        #
-        # if self.activation is not None:
-        #     output = self.activation(output)
-        o = []
-        for i in range(self.units):
-            w = K.gather(self.embeddings[i], content_idx)
-            # w = K.reshape(w, shape=(-1, self.input_dim))
-            _o = K.dot(w, inputs)
-            # _o = K.reshape(_o, shape=(-1, 1))
-            o.append(_o)
-        output = K.concatenate(o, axis=1)
+        w = K.gather(self.embeddings, content_idx)
+        w = K.reshape(w, shape=(-1, self.input_dim, self.units))
+        output = K.batch_dot(inputs, w, axes=(1, 1))
+
+        # [64] vs [4096] 的根源: 输入的向量实际上是 [?, input_dim], 而 w 是 [?, contexts, input_dim, units]
+        # 两个相乘后 为 [?, ?, units], reshape以后就成 [?*?, units]了
+        # reshape只能改变符号定义的shape, 改变不了真实的维度
+        # o = []
+        # inputs = K.reshape(inputs, shape=(-1, self.input_dim, 1))
+        # for i in range(self.units):
+        #     w = K.gather(self.embeddings[i], content_idx)
+        #     w = K.reshape(w, shape=(-1, self.input_dim))
+        #     _o = K.batch_dot(w, inputs, axes=-1)
+        #     o.append(_o)
+        # output = K.concatenate(o, axis=1)
         # output = K.reshape(output, shape=(self.units,))
 
         if self.use_bias:
@@ -197,15 +193,16 @@ if __name__ == '__main__':
     context_id = Input(shape=(1,), dtype='int32', name='context_id')
 
     l_context = Content(
-        units=10
+        units=100
         , contexts=4
         , activation='sigmoid'
         , embeddings_initializer='lecun_uniform'
     )
 
     o_context = l_context([context_id, x])
+    dense1 = Dense(50)(o_context)
 
-    y = Dense(units=9, activation='softmax', name='y')(o_context)
+    y = Dense(units=9, activation='softmax', name='y')(dense1)
 
     model = Model(inputs=[context_id, x], outputs=[y])
 
