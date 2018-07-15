@@ -70,8 +70,8 @@ class OpDataGenerator(object):
 
 
 if __name__=='__main__':
-    gen = OpDataGenerator(delta=0.01, category=9, DIM=12)
-    save_var(gen.gen(100000), "test_data")
+    gen = OpDataGenerator(delta=0.001, category=10, DIM=12)
+    save_var(gen.gen(1000000), "test_data")
 
     op_idx_a, op_1_a, op_2_a, category_a = load_var("test_data")
 

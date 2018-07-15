@@ -5,15 +5,13 @@ from keras import regularizers
 from keras import constraints
 from keras.engine import Layer
 from keras.legacy import interfaces
+from keras.layers import InputSpec
 from keras.layers import Input
-from keras.engine import InputSpec
 from keras.layers import Dense
 from keras.models import Model
-from keras.layers import Embedding
-from keras.layers import Lambda
 
 
-class Content(Layer):
+class Context(Layer):
     """
 
     This layer can only be used as the first layer in a model.
@@ -56,15 +54,16 @@ class Content(Layer):
     def __init__(self,
                  units,
                  contexts,
-                 activation=None,
-                 embeddings_initializer='uniform',
-                 embeddings_regularizer=None,
-                 embeddings_constraint=None,
+                 kernel_initializer='uniform',
+                 kernel_regularizer=None,
+                 kernel_constraint=None,
 
                  use_bias=False,
                  bias_initializer='zeros',
                  bias_regularizer=None,
                  bias_constraint=None,
+
+                 activation=None,
 
                  input_length=None,
 
@@ -75,21 +74,23 @@ class Content(Layer):
                 kwargs['input_shape'] = (input_length,)
             else:
                 kwargs['input_shape'] = (None,)
-        super(Content, self).__init__(**kwargs)
+        super(Context, self).__init__(**kwargs)
 
         self.units = units
         self.contexts = contexts
         self.activation = activations.get(activation)
-        self.embeddings_initializer = initializers.get(embeddings_initializer)
-        self.embeddings_regularizer = regularizers.get(embeddings_regularizer)
+        self.kernel_initializer = initializers.get(kernel_initializer)
+        self.kernel_regularizer = regularizers.get(kernel_regularizer)
+        self.kernel_constraint = constraints.get(kernel_constraint)
+
         self.use_bias = use_bias
         self.bias_initializer = initializers.get(bias_initializer)
         self.bias_regularizer = regularizers.get(bias_regularizer)
         self.bias_constraint = constraints.get(bias_constraint)
-        self.embeddings_constraint = constraints.get(embeddings_constraint)
+
         self.input_length = input_length
 
-        self.embeddings = None
+        self.kernel = None
         self.input_dim = None
         self.bias = None
 
@@ -110,12 +111,12 @@ class Content(Layer):
         #         constraint=self.embeddings_constraint,
         #         dtype=self.dtype)
         #     self.embeddings.append(w)
-        self.embeddings = self.add_weight(
+        self.kernel = self.add_weight(
             shape=(self.contexts, input_dim, self.units),
-            initializer=self.embeddings_initializer,
+            initializer=self.kernel_initializer,
             name='kernel',
-            regularizer=self.embeddings_regularizer,
-            constraint=self.embeddings_constraint,
+            regularizer=self.kernel_regularizer,
+            constraint=self.kernel_constraint,
             dtype=self.dtype)
 
         if self.use_bias:
@@ -126,7 +127,9 @@ class Content(Layer):
                                         constraint=self.bias_constraint)
         else:
             self.bias = None
-        # self.input_spec = [InputSpec(min_ndim=1, axes={-1: 1}), InputSpec(min_ndim=2, axes={-1: input_dim})]
+
+        self.input_spec = [InputSpec(min_ndim=1, axes={-1: 1}), InputSpec(min_ndim=2, axes={-1: input_dim})]
+
         self.built = True
 
     def compute_output_shape(self, input_shape):
@@ -149,7 +152,7 @@ class Content(Layer):
             content_idx = K.cast(content_idx, 'int32')
 
         # 从embeddings取出对应的权重
-        w = K.gather(self.embeddings, content_idx)
+        w = K.gather(self.kernel, content_idx)
         w = K.reshape(w, shape=(-1, self.input_dim, self.units))
         output = K.batch_dot(inputs, w, axes=(1, 1))
 
@@ -176,12 +179,21 @@ class Content(Layer):
 
     def get_config(self):
         config = {'units': self.units,
-                  'embeddings_initializer': initializers.serialize(self.embeddings_initializer),
-                  'embeddings_regularizer': regularizers.serialize(self.embeddings_regularizer),
-                  'embeddings_constraint': constraints.serialize(self.embeddings_constraint),
+                  'contexts': self.contexts,
+
+                  'kernel_initializer': initializers.serialize(self.kernel_initializer),
+                  'kernel_regularizer': regularizers.serialize(self.kernel_regularizer),
+                  'kernel_constraint': constraints.serialize(self.kernel_constraint),
+
+                  'bias_initializer': initializers.serialize(self.bias_initializer),
+                  'bias_regularizer': regularizers.serialize(self.bias_regularizer),
+                  'bias_constraint': constraints.serialize(self.bias_constraint),
+
+                  'activation': activations.serialize(self.activation),
+
                   'input_length': self.input_length}
-        base_config = super(Content, self).get_config()
-        return dict(list(base_config.items()) + list(config.items()))
+        base_config = super(Context, self).get_config()
+        return dict([*base_config.items(), *config.items()])
 
 
 if __name__ == '__main__':
@@ -192,17 +204,16 @@ if __name__ == '__main__':
     x = Input(shape=(24,), dtype='float32', name='x')
     context_id = Input(shape=(1,), dtype='int32', name='context_id')
 
-    l_context = Content(
+    o_context = Context(
         units=100
         , contexts=4
-        , activation='sigmoid'
-        , embeddings_initializer='lecun_uniform'
-    )
+        , activation='relu'
+        , kernel_initializer='lecun_uniform'
+    )([context_id, x])
+    dense1 = Dense(50, activation='sigmoid')(o_context)
+    dense2 = Dense(25, activation='sigmoid')(dense1)
 
-    o_context = l_context([context_id, x])
-    dense1 = Dense(50)(o_context)
-
-    y = Dense(units=9, activation='softmax', name='y')(dense1)
+    y = Dense(units=10, activation='softmax', name='y')(dense2)
 
     model = Model(inputs=[context_id, x], outputs=[y])
 
@@ -230,16 +241,17 @@ if __name__ == '__main__':
         loss={'y': 'categorical_crossentropy'},
         metrics=['accuracy']
     )
-    model.fit(
-        x={'context_id': op_idx_a, 'x': var},
-        y={'y': cate_onehot.values},
-        epochs=50, batch_size=64, shuffle=True, validation_split=0.2,
-        verbose=1,
-    )
+    # model.fit(
+    #     x={'context_id': op_idx_a, 'x': var},
+    #     y={'y': cate_onehot.values},
+    #     epochs=50, batch_size=64, shuffle=True, validation_split=0.2,
+    #     verbose=1,
+    # )
 
     x1 = Input(shape=(24,), dtype='float32', name='x')
     d1 = Dense(units=100, activation='sigmoid')(x1)
-    y2 = Dense(units=9, activation='softmax', name='y')(d1)
+    d2 = Dense(units=50, activation='sigmoid')(d1)
+    y2 = Dense(units=10, activation='softmax', name='y')(d2)
     model_mirror = Model(inputs=[x1], outputs=[y2])
 
     model_mirror.summary()
