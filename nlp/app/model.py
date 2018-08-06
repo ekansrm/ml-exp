@@ -7,6 +7,9 @@ from keras.layers import Embedding
 from keras.layers import Dense
 from keras.layers import LSTM
 from keras.layers import Lambda
+from keras.layers import Input
+from keras.layers import Concatenate
+from nlp.embedding.SimpleEmbeddingBuilder import SimpleEmbeddingBuilder
 
 
 class Layer(object):
@@ -29,7 +32,98 @@ class Layer(object):
         :param args:
         :param kwargs:
         :return:
+
         """
+
+        # 假设到了Embedding成, 已经又六组数据
+        # 设数据的batch_size, 句子经过padding的长度是len
+        # op1: [batch_size, len], str
+        # wordA1: [batch_size, len], int
+        # wordB1: [batch_size, len], int
+
+        # op2: [batch_size, len]
+        # wordA2: [batch_size, len], int
+        # wordB2: [batch_size, len], int
+
+        # 经过embedding和操作子转换
+
+        # op1: [batch_size, len], int
+        # wordA1: [batch_size, len, embedding_vec], int
+        # wordB1: [batch_size, len, embedding_vec], int
+
+        # op2: [batch_size, len], int
+        # wordA2: [batch_size, len, embedding_vec], int
+        # wordB2: [batch_size, len, embedding_vec], int
+
+        batch_size = 32
+        max_len = 50
+
+        op1 = Input(shape=(None, 50), dtype='int')
+        wordA1 = Input(shape=(None, 50), dtype='int')
+        wordB1 = Input(shape=(None, 50), dtype='int')
+        op2 = Input(shape=(None, 50), dtype='int')
+        wordA2 = Input(shape=(None, 50), dtype='int')
+        wordB2 = Input(shape=(None, 50), dtype='int')
+
+
+        # 将4个word合并, 然后通过一个embedding, 转为向量后, 再拆分
+
+        vocab = ['我', '是', '国家']
+
+        embedding_builder = SimpleEmbeddingBuilder('E:\BaiduNetdiskDownload\sgns.sogou.word\sgns.sogou.word')
+
+        embedding, tokenizer = embedding_builder.build(vocab, cache='my_embedding')
+
+        embedding_vocab = len(embedding)
+
+        embedding_vec = len(embedding[0])
+
+        embedding_layer = Embedding(embedding_vocab,
+                                    embedding_vec,
+                                    weights=[embedding],
+                                    input_length=max_len,
+                                    trainable=False)
+
+        wordA1_vec = embedding_layer(wordA1)
+        wordB1_vec = embedding_layer(wordB1)
+        wordA2_vec = embedding_layer(wordA2)
+        wordB2_vec = embedding_layer(wordB2)
+
+
+        # 需要两两合并
+        layer_concatenate_word1 = Concatenate(axis=[-1])
+
+        word1 = layer_concatenate_word1([wordA1_vec, wordB1_vec])
+
+        word2 = layer_concatenate_word1([wordA2_vec, wordB2_vec])
+
+        context_layer = Context(
+            units=100
+            , contexts=4
+            , activation='relu'
+            , kernel_initializer='lecun_uniform'
+        )
+
+        vec1 = context_layer([op1, word1])
+        vec2 = context_layer([op2, word2])
+
+        lstm_1 = LSTM(units=1000, **kwargs)
+
+
+        lstm_2 = LSTM(units=1000, **kwargs)
+
+        lstm_1_out = lstm_1(vec1)
+        lstm_2_out = lstm_2(vec2)
+
+        final_con_layer = Concatenate(axis=[-1])
+
+        final_con = final_con_layer([lstm_1_out, lstm_2_out])
+
+
+        d_out = Dense(units=100)(final_con)
+        d_out = Dense(units=2)
+
+
         # 先按照下表切割向量
         # 然后对词进行tokenizer
 
