@@ -12,6 +12,7 @@ from typing import Tuple, List, Callable
 
 from nlp.embedding.SimpleEmbeddingLookup import SimpleEmbeddingLookup
 from nlp.embedding.Utils import save_var, load_var
+from collections import defaultdict
 
 logger = logging.getLogger("SimpleEmbeddingBuilder")
 
@@ -51,15 +52,21 @@ class SimpleEmbeddingBuilder(object):
 
         if rebuild:
             logger.info("building custom embedding...")
+            vocabulary = set(vocabulary)
+            vocabulary_exist = vocabulary & set(self._embedding.embedding_index.keys())
+            logger.info("total: %d, exist: %d" % (len(vocabulary), len(vocabulary_exist)))
+            vocabulary = list(vocabulary_exist)
             custom_embedding = list([self._embedding[word] for word in vocabulary])
             token = _build_token(vocabulary)
-            logger.warning("build custom embedding completed")
+            logger.info("build custom embedding completed")
 
         if cache is not None:
             save_var((base_embedding_name, custom_embedding, token), cache)
 
         def _tokenizer(word: str) -> int:
-            return token[word]
+            d_token = defaultdict(lambda: 0)
+            d_token.update(token)
+            return d_token[word]
 
         return custom_embedding, _tokenizer
 
