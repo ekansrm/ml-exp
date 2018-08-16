@@ -9,6 +9,7 @@ from keras.layers import LSTM
 from keras.layers import Lambda
 from keras.layers import Input
 from keras.layers import Concatenate
+from keras.models import Model
 from nlp.embedding.SimpleEmbeddingBuilder import SimpleEmbeddingBuilder
 
 
@@ -22,7 +23,7 @@ class Layer(object):
 
     """
 
-    def __init__(self, tokenizer, embedding):
+    def __init__(self, *args, **kwargs):
 
         pass
 
@@ -58,12 +59,12 @@ class Layer(object):
         batch_size = 32
         max_len = 50
 
-        op1 = Input(shape=(None, 50), dtype='int')
-        wordA1 = Input(shape=(None, 50), dtype='int')
-        wordB1 = Input(shape=(None, 50), dtype='int')
-        op2 = Input(shape=(None, 50), dtype='int')
-        wordA2 = Input(shape=(None, 50), dtype='int')
-        wordB2 = Input(shape=(None, 50), dtype='int')
+        op1 = Input(shape=(None, max_len), dtype='int32')
+        wordA1 = Input(shape=(None, max_len), dtype='int32')
+        wordB1 = Input(shape=(None, max_len), dtype='int32')
+        op2 = Input(shape=(None, max_len), dtype='int32')
+        wordA2 = Input(shape=(None, max_len), dtype='int32')
+        wordB2 = Input(shape=(None, max_len), dtype='int32')
 
 
         # 将4个word合并, 然后通过一个embedding, 转为向量后, 再拆分
@@ -71,16 +72,12 @@ class Layer(object):
         vocab = ['我', '是', '国家']
 
         embedding_builder = SimpleEmbeddingBuilder('E:\BaiduNetdiskDownload\sgns.sogou.word\sgns.sogou.word')
-
         embedding, tokenizer = embedding_builder.build(vocab, cache='my_embedding')
-
         embedding_vocab = len(embedding)
-
         embedding_vec = len(embedding[0])
-
         embedding_layer = Embedding(embedding_vocab,
                                     embedding_vec,
-                                    weights=[embedding],
+                                    # weights=[embedding],
                                     input_length=max_len,
                                     trainable=False)
 
@@ -91,7 +88,7 @@ class Layer(object):
 
 
         # 需要两两合并
-        layer_concatenate_word1 = Concatenate(axis=[-1])
+        layer_concatenate_word1 = Concatenate(axis=-1)
 
         word1 = layer_concatenate_word1([wordA1_vec, wordB1_vec])
 
@@ -109,7 +106,6 @@ class Layer(object):
 
         lstm_1 = LSTM(units=1000, **kwargs)
 
-
         lstm_2 = LSTM(units=1000, **kwargs)
 
         lstm_1_out = lstm_1(vec1)
@@ -119,9 +115,13 @@ class Layer(object):
 
         final_con = final_con_layer([lstm_1_out, lstm_2_out])
 
-
         d_out = Dense(units=100)(final_con)
-        d_out = Dense(units=2)
+        d_out = Dense(units=2)(d_out)
+
+        model = Model(inputs=[op1, wordA1, wordB1, op2, wordA2, wordB2], outputs=[d_out])
+
+        model.summary()
+
 
 
         # 先按照下表切割向量
@@ -159,33 +159,37 @@ if __name__ == '__main__':
 
     # 先测试句子分割为多个向量
 
-    test_data = []
-    with open("data1.dat", 'r', encoding='utf-8') as fp:
-        for line in fp.readlines():
-            line = line.strip()
-            if '' == line:
-                continue
-            test_data.append(line)
+    # test_data = []
+    # with open("data1.dat", 'r', encoding='utf-8') as fp:
+    #     for line in fp.readlines():
+    #         line = line.strip()
+    #         if '' == line:
+    #             continue
+    #         test_data.append(line)
+    #
+    # # 先手动切割
+    # dep_set = set()
+    #
+    # def slice(x: str):
+    #     global dep_set
+    #     items = x.split("/")
+    #     dep = items[0::3]
+    #     op1 = items[1::3]
+    #     op2 = items[2::3]
+    #     # tokenizer
+    #     print(dep)
+    #     print(op1)
+    #     print(op2)
+    #
+    #     # embedding
+    #
+    #     return dep, op1, op2
+    #
+    # split_data = [slice(l) for l in test_data]
 
-    # 先手动切割
-    dep_set = set()
-
-    def slice(x: str):
-        global dep_set
-        items = x.split("/")
-        dep = items[0::3]
-        op1 = items[1::3]
-        op2 = items[2::3]
-        # tokenizer
-        print(dep)
-        print(op1)
-        print(op2)
-
-        # embedding
-
-        return dep, op1, op2
-
-    split_data = [slice(l) for l in test_data]
+    l = Layer()
+    a = None
+    l(a)
 
     # 每个分行符是一个批次的分割
 
