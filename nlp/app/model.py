@@ -59,19 +59,21 @@ class Layer(object):
         batch_size = 32
         max_len = 50
 
-        op1 = Input(shape=(None, max_len), dtype='int32')
+        op1 = Input(shape=(None, max_len, 1), dtype='int32')
         wordA1 = Input(shape=(None, max_len), dtype='int32')
         wordB1 = Input(shape=(None, max_len), dtype='int32')
-        op2 = Input(shape=(None, max_len), dtype='int32')
+        op2 = Input(shape=(None, max_len, 1), dtype='int32')
         wordA2 = Input(shape=(None, max_len), dtype='int32')
         wordB2 = Input(shape=(None, max_len), dtype='int32')
 
 
+
         # 将4个word合并, 然后通过一个embedding, 转为向量后, 再拆分
 
-        vocab = ['我', '是', '国家']
+        vocab = ['I', 'am', 'human']
 
-        embedding_builder = SimpleEmbeddingBuilder('E:\BaiduNetdiskDownload\sgns.sogou.word\sgns.sogou.word')
+        # embedding_builder = SimpleEmbeddingBuilder('E:\BaiduNetdiskDownload\sgns.sogou.word\sgns.sogou.word')
+        embedding_builder = SimpleEmbeddingBuilder('/mnt/WORK/Project.DataScience/data/glove/glove.840B.300d.txt')
         embedding, tokenizer = embedding_builder.build(vocab, cache='my_embedding')
         embedding_vocab = len(embedding)
         embedding_vec = len(embedding[0])
@@ -205,7 +207,7 @@ if __name__ == '__main__':
     #   先padding, 在运行时转换
     #   先转换, 在padding, 在输入模型
 
-    print(dep_set)
+    # print(dep_set)
 
     # 手动padding
 
