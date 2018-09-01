@@ -11,6 +11,7 @@ from keras.layers import Input
 from keras.layers import Concatenate
 from keras.models import Model
 from nlp.embedding.SimpleEmbeddingBuilder import SimpleEmbeddingBuilder
+import numpy as np
 
 
 class Layer(object):
@@ -24,10 +25,9 @@ class Layer(object):
     """
 
     def __init__(self, *args, **kwargs):
-
         pass
 
-    def __call__(self, input, *args, **kwargs):
+    def __call__(self, inputs, *args, **kwargs):
         """
 
         :param args:
@@ -56,19 +56,9 @@ class Layer(object):
         # wordA2: [batch_size, len, embedding_vec], int
         # wordB2: [batch_size, len, embedding_vec], int
 
-        batch_size = 32
-        max_len = 50
+        op1, wordA1, wordB1, op2, wordA2, wordB2 = inputs
 
-        op1 = Input(shape=(None, max_len, 1), dtype='int32')
-        wordA1 = Input(shape=(None, max_len), dtype='int32')
-        wordB1 = Input(shape=(None, max_len), dtype='int32')
-        op2 = Input(shape=(None, max_len, 1), dtype='int32')
-        wordA2 = Input(shape=(None, max_len), dtype='int32')
-        wordB2 = Input(shape=(None, max_len), dtype='int32')
-
-
-
-        # 将4个word合并, 然后通过一个embedding, 转为向量后, 再拆分
+        # 构建embedding层
 
         vocab = ['I', 'am', 'human']
 
@@ -79,7 +69,7 @@ class Layer(object):
         embedding_vec = len(embedding[0])
         embedding_layer = Embedding(embedding_vocab,
                                     embedding_vec,
-                                    # weights=[embedding],
+                                    weights=[np.array(embedding)],
                                     input_length=max_len,
                                     trainable=False)
 
@@ -87,7 +77,6 @@ class Layer(object):
         wordB1_vec = embedding_layer(wordB1)
         wordA2_vec = embedding_layer(wordA2)
         wordB2_vec = embedding_layer(wordB2)
-
 
         # 需要两两合并
         layer_concatenate_word1 = Concatenate(axis=-1)
@@ -98,7 +87,7 @@ class Layer(object):
 
         context_layer = Context(
             units=100
-            , contexts=4
+            , contexts=13
             , activation='relu'
             , kernel_initializer='lecun_uniform'
         )
@@ -106,25 +95,16 @@ class Layer(object):
         vec1 = context_layer([op1, word1])
         vec2 = context_layer([op2, word2])
 
-        lstm_1 = LSTM(units=1000, **kwargs)
+        vec = layer_concatenate_word1([vec1, vec2])
 
-        lstm_2 = LSTM(units=1000, **kwargs)
+        lstm = LSTM(units=100, **kwargs)
 
-        lstm_1_out = lstm_1(vec1)
-        lstm_2_out = lstm_2(vec2)
+        lstm_out = lstm(vec)
 
-        final_con_layer = Concatenate(axis=[-1])
-
-        final_con = final_con_layer([lstm_1_out, lstm_2_out])
-
-        d_out = Dense(units=100)(final_con)
+        d_out = Dense(units=50)(lstm_out)
         d_out = Dense(units=2)(d_out)
 
-        model = Model(inputs=[op1, wordA1, wordB1, op2, wordA2, wordB2], outputs=[d_out])
-
-        model.summary()
-
-
+        return d_out
 
         # 先按照下表切割向量
         # 然后对词进行tokenizer
@@ -158,16 +138,8 @@ class Layer(object):
 
 
 if __name__ == '__main__':
-
     # 先测试句子分割为多个向量
 
-    # test_data = []
-    # with open("data1.dat", 'r', encoding='utf-8') as fp:
-    #     for line in fp.readlines():
-    #         line = line.strip()
-    #         if '' == line:
-    #             continue
-    #         test_data.append(line)
     #
     # # 先手动切割
     # dep_set = set()
@@ -189,9 +161,33 @@ if __name__ == '__main__':
     #
     # split_data = [slice(l) for l in test_data]
 
-    l = Layer()
-    a = None
-    l(a)
+    batch_size = 32
+    max_len = 50
+
+    op1 = Input(shape=(max_len, 1,), dtype='int32')
+    wordA1 = Input(shape=(max_len,), dtype='int32')
+    wordB1 = Input(shape=(max_len,), dtype='int32')
+    op2 = Input(shape=(max_len, 1,), dtype='int32')
+    wordA2 = Input(shape=(max_len,), dtype='int32')
+    wordB2 = Input(shape=(max_len,), dtype='int32')
+
+    layer = Layer()
+
+    d_out = layer([op1, wordA1, wordB1, op2, wordA2, wordB2])
+
+    model = Model(inputs=[op1, wordA1, wordB1, op2, wordA2, wordB2], outputs=[d_out])
+
+    model.summary()
+
+    # test_data = []
+    # with open("data1.dat", 'r', encoding='utf-8') as fp:
+    #     for line in fp.readlines():
+    #         line = line.strip()
+    #         if '' == line:
+    #             continue
+    #         test_data.append(line)
+    #
+    # print(test_data)
 
     # 每个分行符是一个批次的分割
 
@@ -211,15 +207,8 @@ if __name__ == '__main__':
 
     # 手动padding
 
-
     # print(split_data)
 
-
-
-
-
     # slice_1 = Lambda(slice, arguments={'h1': 0, 'h2': 6, 'w1': 0, 'w2': 6})(sliced)
-
-
 
     pass
