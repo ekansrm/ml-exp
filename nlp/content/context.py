@@ -151,10 +151,14 @@ class Context(Layer):
         if K.dtype(content_idx) != 'int32':
             content_idx = K.cast(content_idx, 'int32')
 
+        # 计算权重的正确维度
+        input_shape = [d.value for d in inputs.shape]
+        w_shape = (-1, *input_shape[1:], self.units)
+
         # 从embeddings取出对应的权重
         w = K.gather(self.kernel, content_idx)
-        w = K.reshape(w, shape=(-1, self.input_dim, self.units))
-        output = K.batch_dot(inputs, w, axes=(1, 1))
+        w = K.reshape(w, shape=w_shape)
+        output = K.batch_dot(inputs, w, axes=(-1, -2))
 
         # [64] vs [4096] 的根源: 输入的向量实际上是 [?, input_dim], 而 w 是 [?, contexts, input_dim, units]
         # 两个相乘后 为 [?, ?, units], reshape以后就成 [?*?, units]了
