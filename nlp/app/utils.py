@@ -160,3 +160,8 @@ def read_corpus(path: str) -> List[List[str]]:
     return batches
 
 
+def read_vocab(path: str) -> List[str]:
+    with open(path, 'r', encoding='utf-8') as fp:
+        vocab = fp.readlines()
+        vocab = list([word.strip() for word in vocab])
+    return vocab

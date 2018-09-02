@@ -14,6 +14,7 @@ if __name__ == '__main__':
     应用测试
     """
     corpus_path = '/mnt/WORK/Project.DataScience/ml-exp/nlp/app/data1.dat'
+    vocab_path = '/mnt/WORK/Project.DataScience/ml-exp/nlp/app/vocab.dat'
     corpus = read_corpus(corpus_path)
 
     batch_size = 32
@@ -29,7 +30,7 @@ if __name__ == '__main__':
     b_w2 = []
     y = []
 
-    vocab = ['I', 'am', 'human']
+    vocab = read_vocab(vocab_path)
 
     for batch in corpus_batches:
         _dep_a, _op1_a, _op2_a, _dep_b, _op1_b, _op2_b, _y = process_sample(batch)
@@ -43,15 +44,6 @@ if __name__ == '__main__':
         b_w2.extend(_op2_b)
 
         y.extend(_y)
-
-    print(len(a_dep))
-    print(len(a_w1))
-    print(len(a_w2))
-
-    print(len(b_dep))
-    print(len(b_w1))
-    print(len(b_w2))
-    print(len(y))
 
     # tokenizer
     # embedding_builder = SimpleEmbeddingBuilder('E:\BaiduNetdiskDownload\sgns.sogou.word\sgns.sogou.word')
