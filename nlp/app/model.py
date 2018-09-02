@@ -6,12 +6,12 @@ from nlp.content.context import Context
 from keras.layers import Embedding
 from keras.layers import Dense
 from keras.layers import LSTM
-from keras.layers import Lambda
 from keras.layers import Input
 from keras.layers import Concatenate
 from keras.models import Model
 from nlp.embedding.SimpleEmbeddingBuilder import SimpleEmbeddingBuilder
 import numpy as np
+from nlp.app.utils import *
 
 
 class Layer(object):
@@ -24,10 +24,11 @@ class Layer(object):
 
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, name, *args, **kwargs):
+        self.name = name
         pass
 
-    def __call__(self, inputs, *args, **kwargs):
+    def __call__(self, inputs, embedding, name, *args, **kwargs):
         """
 
         :param args:
@@ -60,11 +61,7 @@ class Layer(object):
 
         # 构建embedding层
 
-        vocab = ['I', 'am', 'human']
 
-        # embedding_builder = SimpleEmbeddingBuilder('E:\BaiduNetdiskDownload\sgns.sogou.word\sgns.sogou.word')
-        embedding_builder = SimpleEmbeddingBuilder('/mnt/WORK/Project.DataScience/data/glove/glove.840B.300d.txt')
-        embedding, tokenizer = embedding_builder.build(vocab, cache='my_embedding')
         embedding_vocab = len(embedding)
         embedding_vec = len(embedding[0])
         embedding_layer = Embedding(embedding_vocab,
@@ -102,39 +99,9 @@ class Layer(object):
         lstm_out = lstm(vec)
 
         d_out = Dense(units=50)(lstm_out)
-        d_out = Dense(units=2)(d_out)
+        d_out = Dense(units=2, name=name)(d_out)
 
         return d_out
-
-        # 先按照下表切割向量
-        # 然后对词进行tokenizer
-
-        # def slice(x, h1, h2, w1, w2):
-        #     """ Define a tensor slice function
-        #     """
-        #     return x[:, h1:h2, w1:w2, :]
-        #
-        # slice_1 = Lambda(slice, arguments={'h1': 0, 'h2': 6, 'w1': 0, 'w2': 6})(sliced)
-        #
-        #
-        # for word, i in word_index.items():
-        #     embedding_vector = embeddings_index.get(word)
-        #     if embedding_vector is not None:
-        #         # words not found in embedding index will be all-zeros.
-        #         embedding_matrix[i] = embedding_vector
-        #
-        # embedding_layer = Embedding(len(word_index) + 1,
-        #                             EMBEDDING_DIM,
-        #                             weights=[embedding_matrix],
-        #                             input_length=MAX_SEQUENCE_LENGTH,
-        #                             trainable=False)
-        #
-        #
-        # embedding_matrix = np.zeros((len(word_index) + 1, EMBEDDING_DIM))
-        #
-        # embedding = Embedding(
-        # )
-        pass
 
 
 if __name__ == '__main__':
@@ -161,6 +128,11 @@ if __name__ == '__main__':
     #
     # split_data = [slice(l) for l in test_data]
 
+    vocab = ['I', 'am', 'human']
+    # embedding_builder = SimpleEmbeddingBuilder('E:\BaiduNetdiskDownload\sgns.sogou.word\sgns.sogou.word')
+    embedding_builder = SimpleEmbeddingBuilder('/mnt/WORK/Project.DataScience/data/glove/glove.840B.300d.txt')
+    embedding, tokenizer = embedding_builder.build(vocab, cache='my_embedding')
+
     batch_size = 32
     max_len = 50
 
@@ -173,7 +145,7 @@ if __name__ == '__main__':
 
     layer = Layer()
 
-    d_out = layer([op1, wordA1, wordB1, op2, wordA2, wordB2])
+    d_out = layer([op1, wordA1, wordB1, op2, wordA2, wordB2], embedding=embedding)
 
     model = Model(inputs=[op1, wordA1, wordB1, op2, wordA2, wordB2], outputs=[d_out])
 
