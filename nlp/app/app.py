@@ -47,8 +47,9 @@ if __name__ == '__main__':
 
     # tokenizer
     # embedding_builder = SimpleEmbeddingBuilder('E:\BaiduNetdiskDownload\sgns.sogou.word\sgns.sogou.word')
-    embedding_builder = SimpleEmbeddingBuilder('/mnt/WORK/Project.DataScience/data/glove/glove.840B.300d.txt')
-    embedding, tokenizer = embedding_builder.build(vocab, cache='my_embedding')
+    embedding_builder = SimpleEmbeddingBuilder('/mnt/DATA/DataScience/word2vec/sgns.sogou.word')
+    embedding, tokenizer = embedding_builder.build(vocab, cache='embedding-1')
+    print("词向量不存在的词数目: %d " % (len(vocab) + 1 - len(embedding)))
 
     a_dep = np.array([[dep_tokenizer(word) for word in sentence] for sentence in a_dep])
     a_w1 = np.array([[tokenizer(word) for word in sentence] for sentence in a_w1])
