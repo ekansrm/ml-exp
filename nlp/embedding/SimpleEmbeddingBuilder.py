@@ -28,7 +28,7 @@ class SimpleEmbeddingBuilder(object):
         def _build_token(m_vocab):
             m_token = {}
             for i, word in enumerate(m_vocab):
-                m_token[word] = i
+                m_token[word] = i + 1
             return m_token
 
         base_embedding_name = self._embedding_name
@@ -57,6 +57,9 @@ class SimpleEmbeddingBuilder(object):
             logger.info("total: %d, exist: %d" % (len(vocabulary), len(vocabulary_exist)))
             vocabulary = list(vocabulary_exist)
             custom_embedding = list([self._embedding[word] for word in vocabulary])
+            embedding_dimension = len(custom_embedding[0]) if len(custom_embedding) >0 else 0
+            if embedding_dimension != 0:
+                custom_embedding.insert(0, [0.0] * embedding_dimension)
             token = _build_token(vocabulary)
             logger.info("build custom embedding completed")
 
@@ -76,14 +79,16 @@ if __name__ == '__main__':
     logging.basicConfig(
         level=logging.DEBUG
     )
-    vocab = ['我', '是', '国家']
+    vocab = ['我', '是', '国家', '和']
 
-    embedding_builder = SimpleEmbeddingBuilder('E:\BaiduNetdiskDownload\sgns.sogou.word\sgns.sogou.word')
+    embedding_builder = SimpleEmbeddingBuilder('/mnt/DATA/DataScience/word2vec/sgns.sogou.word.10.with.head')
 
     embedding, tokenizer = embedding_builder.build(vocab, cache='my_embedding')
 
-    vocab2 = ['你', '是', '国家']
+    vocab2 = ['你', '是', '国家', '和']
     embedding2, tokenizer2 = embedding_builder.build(vocab2, cache='my_embedding')
 
     print(list([tokenizer(word) for word in vocab]))
+    print(list([embedding[tokenizer(word)] for word in vocab]))
     print(list([tokenizer2(word) for word in vocab2]))
+    print(list([embedding2[tokenizer2(word)] for word in vocab2]))

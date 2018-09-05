@@ -36,6 +36,7 @@ class SimpleEmbeddingLookup(object):
         self._embedding_encoding = embedding_encoding
         self._embedding_index = None
         self._embedding_cache = {}
+        self._embedding_head = {}
 
     def __del__(self):
         """
@@ -83,10 +84,23 @@ class SimpleEmbeddingLookup(object):
         line_byte_cnt = 0
         word = b''
         word_completed = False
-        embedding_fp.seek(0, 2)
-        embedding_file_size = embedding_fp.tell()
 
-        embedding_fp.seek(0, 0)
+        head = embedding_fp.readline()
+        head_items = head.split(b' ')
+        if len(head_items) == 2:
+            self._embedding_head = {
+                "size": int(head_items[0]),
+                "dimension": int(head_items[1]),
+            }
+            current_pos = embedding_fp.tell()
+            embedding_fp.seek(0, 2)
+            embedding_file_size = embedding_fp.tell()
+            embedding_fp.seek(current_pos, 0)
+        else:
+            embedding_fp.seek(0, 2)
+            embedding_file_size = embedding_fp.tell()
+            embedding_fp.seek(0, 0)
+
         bar_format = "{percentage:3.0f}% | {n_fmt}/{total_fmt} | [{elapsed}<{remaining}]"
         with tqdm(total=embedding_file_size, bar_format=bar_format) as p_bar:
             last_pos = 0
@@ -150,7 +164,9 @@ if __name__ == '__main__':
     logging.basicConfig(
         level=logging.DEBUG
     )
-    embedding = SimpleEmbeddingLookup('embedding.txt')
-    print(embedding['the'])
-    print(embedding['is'])
-    print(embedding['a'])
+    embedding_1 = SimpleEmbeddingLookup('/mnt/DATA/DataScience/word2vec/sgns.sogou.word.10.with.head')
+    embedding_2 = SimpleEmbeddingLookup('/mnt/DATA/DataScience/word2vec/sgns.sogou.word.10.no.head')
+    print(embedding_1['和'])
+    print(embedding_2['和'])
+    print(embedding_1)
+    print(embedding_2)
