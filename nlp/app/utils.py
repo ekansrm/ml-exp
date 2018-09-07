@@ -165,3 +165,9 @@ def read_vocab(path: str) -> List[str]:
         vocab = fp.readlines()
         vocab = list([word.strip() for word in vocab])
     return vocab
+
+
+def to_file_for_str_list(file, str_list: List[str], delimiter: str = '\n'):
+    with open(file, 'w', encoding='utf-8') as fp:
+        fp.write(delimiter.join(str_list))
+        fp.flush()

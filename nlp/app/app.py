@@ -13,8 +13,10 @@ if __name__ == '__main__':
     """
     应用测试
     """
-    corpus_path = '/mnt/WORK/Project.DataScience/ml-exp/nlp/app/data1.dat'
-    vocab_path = '/mnt/WORK/Project.DataScience/ml-exp/nlp/app/vocab.dat'
+    # corpus_path = '/mnt/WORK/Project.DataScience/ml-exp/nlp/app/data1.dat'
+    # vocab_path = '/mnt/WORK/Project.DataScience/ml-exp/nlp/app/vocab.dat'
+    corpus_path = 'D:\\Work\\Project\\Project.DataScience\\ml-exp\\nlp\\app\\data1.dat'
+    vocab_path = 'D:\\Work\\Project\\Project.DataScience\\ml-exp\\nlp\\app\\vocab.dat'
     corpus = read_corpus(corpus_path)
 
     batch_size = 32
@@ -46,10 +48,12 @@ if __name__ == '__main__':
         y.extend(_y)
 
     # tokenizer
-    # embedding_builder = SimpleEmbeddingBuilder('E:\BaiduNetdiskDownload\sgns.sogou.word\sgns.sogou.word')
-    embedding_builder = SimpleEmbeddingBuilder('/mnt/DATA/DataScience/word2vec/sgns.sogou.word')
+    # embedding_builder = SimpleEmbeddingBuilder('/mnt/DATA/DataScience/word2vec/sgns.sogou.word')
+    embedding_builder = SimpleEmbeddingBuilder('E:\BaiduNetdiskDownload\sgns.sogou.word\sgns.sogou.word')
     embedding, tokenizer = embedding_builder.build(vocab, cache='embedding-1')
-    print("词向量不存在的词数目: %d " % (len(vocab) + 1 - len(embedding)))
+    rouge = list(filter(lambda x: tokenizer(x) == 0, vocab))
+    print("词总数: %d, 词向量不存在的词数目: %d " % (len(embedding) - 1 + len(rouge), len(rouge)))
+    to_file_for_str_list("rouge", rouge)
 
     a_dep = np.array([[dep_tokenizer(word) for word in sentence] for sentence in a_dep])
     a_w1 = np.array([[tokenizer(word) for word in sentence] for sentence in a_w1])
